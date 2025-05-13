@@ -17,9 +17,9 @@ const openai = new OpenAI({
  */
 async function processText(
   userContent,
-  systemPrompt = "你是人工智能助手",
-  modelId = "{TEMPLATE_ENDPOINT_ID}",
-  isStream = false
+  systemPrompt = "你是一名专业的文本润色专家，现在需要你对接下来的文本进行旅游日记类型的润色，并保留原文的意思。",
+  modelId = "ep-20250513000008-6hjfc", // 修改为豆包AI支持的模型ID
+  isStream = true
 ) {
   try {
     // 构建请求参数

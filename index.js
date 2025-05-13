@@ -7,9 +7,17 @@ const cors = require("cors");
 const sharp = require("sharp");
 const mongoose = require("mongoose");
 const { User, Admin, TravelNote } = require("./db");
+const { processText } = require("./utils/arkAiService"); // 引入arkAiService模块
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Accept"],
+    credentials: true,
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -18,10 +26,10 @@ app.use(express.static(__dirname));
 const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     // 确保视频目录存在
-    const fs = require('fs');
-    const dir = './videos';
-    if (!fs.existsSync(dir)){
-        fs.mkdirSync(dir, { recursive: true });
+    const fs = require("fs");
+    const dir = "./videos";
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
     cb(null, dir); // 视频文件的保存路径
   },
@@ -39,7 +47,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     let type = file.originalname.replace(/.+\./, ".");
-    console.log(type);
+    // console.log(type);
     cb(null, `${v4()}${type}`);
   },
 });
@@ -76,7 +84,7 @@ app.get("/getTravelNotes", async (req, res) => {
       ...note,
       imgList: note.imgList.flat().map(String), // 扁平化并转换为字符串数组
     }));
-    console.log(processedResult);
+    // console.log(processedResult);
 
     res.send(processedResult);
   } catch (error) {
@@ -88,7 +96,7 @@ app.get("/getTravelNotes", async (req, res) => {
 // 获取游记详情(从查询参数中获取游记ID)
 app.get("/getTravelNoteDetail", async (req, res) => {
   const { _id } = req.query; // 从查询参数中获取游记ID
-  console.log(_id);
+  // console.log(_id);
   try {
     // 使用聚合管道查询游记详情，并连表查询用户信息
     const result = await TravelNote.aggregate([
@@ -118,7 +126,7 @@ app.get("/getTravelNoteDetail", async (req, res) => {
       ...result[0],
       imgList: result[0].imgList.flat().map(String), // 扁平化并转换为字符串数组
     };
-    console.log(processedResult);
+    // console.log(processedResult);
     // 直接返回查询结果
     res.status(200).send(processedResult); // 由于_id唯一，关心第一个元素即可
   } catch (error) {
@@ -199,20 +207,20 @@ app.post("/uploadImg", upload.array("file", 6), async (req, res) => {
   }
 });
 
-// 上传视频的接口 输入一个视频流文件 => 存储的本机地址
+// 上传视频的接口 输入一个视频流文件 => 存储在本机地址
 app.post("/uploadVideo", videoUpload.single("video"), (req, res) => {
-  console.log("收到上传视频请求：",req);
+  // console.log("收到上传视频请求：", req);
   const serverUrl = "http://localhost:3001";
   if (req.file) {
-    console.log(req.file.path); // 打印上传文件的保存路径
+    // console.log(req.file.path); // 打印上传文件的保存路径
     // 确保路径格式正确，避免双斜杠
-    const videoPath = req.file.path.replace(/\\/g, '/'); // 将反斜杠替换为正斜杠
+    const videoPath = req.file.path.replace(/\\/g, "/"); // 将反斜杠替换为正斜杠
     const fullUrl = `${serverUrl}/${videoPath}`;
-    console.log("视频完整URL:", fullUrl);
-    
+    // console.log("视频完整URL:", fullUrl);
+
     res.send({
       message: "Video uploaded successfully",
-      path: fullUrl
+      path: fullUrl,
     });
   } else {
     res.status(400).send({ message: "Video upload failed" });
@@ -221,7 +229,7 @@ app.post("/uploadVideo", videoUpload.single("video"), (req, res) => {
 
 // 获取我的发布的数据
 app.get("/getMyPublish", async (req, res) => {
-  console.log("收到请求");
+  // console.log("收到请求");
   const { openid } = req.query;
   const result = await TravelNote.find({
     openid: openid,
@@ -239,7 +247,7 @@ app.get("/getMyPublish", async (req, res) => {
     publishTime: note._doc.publishTime,
     imgList: note.imgList.flat().map(String), // 扁平化并转换为字符串数组
   }));
-  console.log(processedResult);
+  // console.log(processedResult);
 
   res.send(processedResult);
 });
@@ -263,7 +271,7 @@ app.post("/toLogin", async (req, res) => {
 
 // 注册
 app.post("/register", async (req, res) => {
-  console.log("收到请求", req.body);
+  // console.log("收到请求", req.body);
   const { username, password, date, avatarUrl, nickname } = req.body;
   const result = await User.findOne({
     username,
@@ -347,7 +355,7 @@ app.get("/searchTravelNotes", async (req, res) => {
       ...note,
       imgList: note.imgList.flat().map(String), // 扁平化并转换为字符串数组
     }));
-    console.log(processedResult);
+    // console.log(processedResult);
 
     res.status(200).send(processedResult);
   } catch (error) {
@@ -413,13 +421,13 @@ app.post("/restoreTravelNote", async (req, res) => {
 // PC 登录
 app.post("/admin/login", async (req, res) => {
   const { username, password } = req.body;
-  console.log(username, password);
+  // console.log(username, password);
   const result = await Admin.findOne({
     username,
   });
   if (result && result.password) {
     // 使用 md5 加密后再比较
-    console.log(123);
+    // console.log(123);
     // 登录成功
     res.send(result);
   } else {
@@ -455,7 +463,7 @@ app.post("/admin/getTravelNotes", async (req, res) => {
     已通过: 1,
     已驳回: 2,
   };
-  console.log(emumObj[search]);
+  // console.log(emumObj[search]);
   if (emumObj[search] || emumObj[search] === 0) {
     searchQuery = [{ state: emumObj[search] }];
   } else {
@@ -540,6 +548,74 @@ app.post("/admin/getTravelNotes", async (req, res) => {
   } catch (error) {
     console.error("Error getting travel notes with user info:", error);
     res.status(500).send("Server Error");
+  }
+});
+
+// 文本润色接口
+// 文本润色接口（流式输出）
+app.post("/polishText", async (req, res) => {
+  console.log("收到请求", req.body);
+  const { text, style = "旅游日记" } = req.body;
+  if (!text) {
+    return res.status(400).send({ message: "文本内容不能为空" });
+  }
+
+  try {
+    // 设置响应头，支持流式输出
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    // 构建润色的系统提示词
+    const systemPrompt = `你是一名专业的文本润色专家，现在需要你对接下来的文本进行${style}类型的润色，并保留原文的意思。请直接返回润色后的文本，不要添加任何解释或前缀。`;
+
+    // 添加调试信息
+    console.log("开始调用豆包AI，模型ID:", "ep-20250513000008-6hjfc");
+
+    // 调用豆包AI进行文本润色（使用流式响应）
+    const stream = await processText(
+      text,
+      systemPrompt,
+      "ep-20250513000008-6hjfc", // 使用实际的模型ID
+      true
+    );
+    console.log("成功获取流式响应对象");
+    // 验证stream对象
+    if (!stream || typeof stream[Symbol.asyncIterator] !== "function") {
+      throw new Error("返回的stream对象不是有效的异步迭代器，无法创建流读取器");
+    }
+
+    // 发送原始文本作为第一条消息
+    res.write(
+      `data: ${JSON.stringify({ type: "original", content: text })}
+
+  `
+    );
+
+    // 处理流式响应
+    for await (const chunk of stream) {
+      if (chunk.choices[0]?.delta?.content) {
+        const content = chunk.choices[0].delta.content;
+        console.log("接收到新的内容块:", content);
+        res.write(`data: ${JSON.stringify({ type: "chunk", content })}\n\n`);
+      }
+    }
+
+    // 发送完成消息
+    res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+    res.end();
+  } catch (error) {
+    console.error("文本润色失败:", error);
+    // 如果已经开始发送流式响应，则发送错误消息
+    if (res.headersSent) {
+      res.write(
+        `data: ${JSON.stringify({ type: "error", message: error.message })}\n\n`
+      );
+      res.end();
+    } else {
+      // 否则发送常规错误响应
+      res.status(500).send({ message: "文本润色失败", error: error.message });
+    }
   }
 });
 
