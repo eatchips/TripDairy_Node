@@ -562,7 +562,7 @@ app.post("/polishText", async (req, res) => {
 
   try {
     // 设置响应头，支持流式输出
-    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
@@ -596,7 +596,7 @@ app.post("/polishText", async (req, res) => {
     for await (const chunk of stream) {
       if (chunk.choices[0]?.delta?.content) {
         const content = chunk.choices[0].delta.content;
-        console.log("接收到新的内容块:", content);
+        // console.log(`data: ${JSON.stringify({ type: "chunk", content })}\n\n`);
         res.write(`data: ${JSON.stringify({ type: "chunk", content })}\n\n`);
       }
     }
