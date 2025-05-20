@@ -56,6 +56,28 @@ const upload = multer({ storage });
 // 获取首页的游记数据
 app.get("/getTravelNotes", async (req, res) => {
   try {
+    // 获取分页参数，如果没有提供则使用默认值
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const skipAmount = (page - 1) * pageSize;
+
+    // 首先查询总记录数
+    const totalCountResult = await TravelNote.aggregate([
+      {
+        $match: {
+          state: 1, // 筛选已通过审核的游记
+          isDeleted: false, // 确保游记未被伪删除
+        },
+      },
+      {
+        $count: "total",
+      },
+    ]);
+
+    const totalCount =
+      totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+
+    // 查询分页数据
     const result = await TravelNote.aggregate([
       {
         $match: {
@@ -77,6 +99,12 @@ app.get("/getTravelNotes", async (req, res) => {
       {
         $sort: { publishTime: -1 }, // 根据发布时间降序排序
       },
+      {
+        $skip: skipAmount, // 跳过前面的文档
+      },
+      {
+        $limit: pageSize, // 限制返回的文档数量
+      },
     ]);
 
     // 将 imgList 转换为一维字符串数组
@@ -84,9 +112,17 @@ app.get("/getTravelNotes", async (req, res) => {
       ...note,
       imgList: note.imgList.flat().map(String), // 扁平化并转换为字符串数组
     }));
-    // console.log(processedResult);
 
-    res.send(processedResult);
+    // 返回分页数据和分页信息
+    res.send({
+      data: processedResult,
+      pagination: {
+        total: totalCount,
+        currentPage: page,
+        pageSize: pageSize,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
+    });
   } catch (error) {
     console.error("获取游记数据失败", error);
     res.status(500).send("Server Error");
@@ -322,10 +358,49 @@ app.post("/updateAvatar", async (req, res) => {
 
 // 微信小程序中的搜索
 app.get("/searchTravelNotes", async (req, res) => {
-  const { title } = req.query;
+  const { title, page = 1, pageSize = 10 } = req.query;
   const regexTitle = new RegExp(title, "i"); // 创建正则表达式，'i' 代表不区分大小写
+  
+  // 将页码和每页大小转换为数字
+  const pageNum = parseInt(page);
+  const pageSizeNum = parseInt(pageSize);
+  const skipAmount = (pageNum - 1) * pageSizeNum;
 
   try {
+    // 首先查询满足条件的总记录数
+    const totalCountResult = await TravelNote.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          localField: "openid",
+          foreignField: "_id",
+          as: "userInfo",
+        },
+      },
+      {
+        $unwind: "$userInfo",
+      },
+      {
+        $match: {
+          $and: [
+            { state: 1 },           // 只返回审核通过的游记
+            { isDeleted: false },   // 只返回未被删除的游记
+            { $or: [
+                { title: regexTitle },
+                { "userInfo.username": regexTitle },
+              ]
+            }
+          ]
+        },
+      },
+      {
+        $count: "total"
+      }
+    ]);
+    
+    const totalCount = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+    
+    // 查询分页数据
     const results = await TravelNote.aggregate([
       {
         // 将游记数据与用户数据进行联表查询
@@ -341,23 +416,46 @@ app.get("/searchTravelNotes", async (req, res) => {
         $unwind: "$userInfo",
       },
       {
-        // 根据游记标题或用户昵称进行搜索
+        // 根据游记标题或用户昵称进行搜索，并且只返回审核通过且未删除的游记
         $match: {
-          $or: [
-            { title: regexTitle }, // 匹配游记标题
-            { "userInfo.username": regexTitle }, // 匹配用户昵称
-          ],
+          $and: [
+            { state: 1 },           // 只返回审核通过的游记
+            { isDeleted: false },   // 只返回未被删除的游记
+            { $or: [
+                { title: regexTitle }, // 匹配游记标题
+                { "userInfo.username": regexTitle }, // 匹配用户昵称
+              ]
+            }
+          ]
         },
       },
+      {
+        $sort: { publishTime: -1 }, // 按发布时间降序排序
+      },
+      {
+        $skip: skipAmount // 跳过前面的文档
+      },
+      {
+        $limit: pageSizeNum // 限制返回的文档数量
+      }
     ]);
+    
     // 将 imgList 转换为一维字符串数组
     const processedResult = results.map((note) => ({
       ...note,
       imgList: note.imgList.flat().map(String), // 扁平化并转换为字符串数组
     }));
-    // console.log(processedResult);
 
-    res.status(200).send(processedResult);
+    // 返回分页数据和分页信息
+    res.status(200).send({
+      data: processedResult,
+      pagination: {
+        total: totalCount,
+        currentPage: pageNum,
+        pageSize: pageSizeNum,
+        totalPages: Math.ceil(totalCount / pageSizeNum)
+      }
+    });
   } catch (error) {
     console.error("Search Error:", error);
     res.status(500).send("Internal Server Error");

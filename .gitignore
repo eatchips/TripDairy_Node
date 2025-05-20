@@ -1,39 +1,49 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# dependencies
+# Dependencies
 node_modules/
 
-# Expo
-.expo/
+# Build files
 dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
+build/
 *.tsbuildinfo
 
-app-example
+# Coverage
+coverage/
+.nyc_output
+
+# Environment
+.env
+.env*.local
+.env*.example
+
+# Cache
+.cache/
+.eslintcache
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Debug
+*.pid
+*.seed
+*.pid.lock
+
+# Optional
+package-lock.json   # 如果你使用 Yarn，可以忽略此文件
+yarn.lock           # 如果你使用 npm，可以忽略此文件
