@@ -360,7 +360,7 @@ app.post("/updateAvatar", async (req, res) => {
 app.get("/searchTravelNotes", async (req, res) => {
   const { title, page = 1, pageSize = 10 } = req.query;
   const regexTitle = new RegExp(title, "i"); // 创建正则表达式，'i' 代表不区分大小写
-  
+
   // 将页码和每页大小转换为数字
   const pageNum = parseInt(page);
   const pageSizeNum = parseInt(pageSize);
@@ -383,23 +383,22 @@ app.get("/searchTravelNotes", async (req, res) => {
       {
         $match: {
           $and: [
-            { state: 1 },           // 只返回审核通过的游记
-            { isDeleted: false },   // 只返回未被删除的游记
-            { $or: [
-                { title: regexTitle },
-                { "userInfo.username": regexTitle },
-              ]
-            }
-          ]
+            { state: 1 }, // 只返回审核通过的游记
+            { isDeleted: false }, // 只返回未被删除的游记
+            {
+              $or: [{ title: regexTitle }, { "userInfo.username": regexTitle }],
+            },
+          ],
         },
       },
       {
-        $count: "total"
-      }
+        $count: "total",
+      },
     ]);
-    
-    const totalCount = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
-    
+
+    const totalCount =
+      totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+
     // 查询分页数据
     const results = await TravelNote.aggregate([
       {
@@ -419,27 +418,28 @@ app.get("/searchTravelNotes", async (req, res) => {
         // 根据游记标题或用户昵称进行搜索，并且只返回审核通过且未删除的游记
         $match: {
           $and: [
-            { state: 1 },           // 只返回审核通过的游记
-            { isDeleted: false },   // 只返回未被删除的游记
-            { $or: [
+            { state: 1 }, // 只返回审核通过的游记
+            { isDeleted: false }, // 只返回未被删除的游记
+            {
+              $or: [
                 { title: regexTitle }, // 匹配游记标题
                 { "userInfo.username": regexTitle }, // 匹配用户昵称
-              ]
-            }
-          ]
+              ],
+            },
+          ],
         },
       },
       {
         $sort: { publishTime: -1 }, // 按发布时间降序排序
       },
       {
-        $skip: skipAmount // 跳过前面的文档
+        $skip: skipAmount, // 跳过前面的文档
       },
       {
-        $limit: pageSizeNum // 限制返回的文档数量
-      }
+        $limit: pageSizeNum, // 限制返回的文档数量
+      },
     ]);
-    
+
     // 将 imgList 转换为一维字符串数组
     const processedResult = results.map((note) => ({
       ...note,
@@ -453,8 +453,8 @@ app.get("/searchTravelNotes", async (req, res) => {
         total: totalCount,
         currentPage: pageNum,
         pageSize: pageSizeNum,
-        totalPages: Math.ceil(totalCount / pageSizeNum)
-      }
+        totalPages: Math.ceil(totalCount / pageSizeNum),
+      },
     });
   } catch (error) {
     console.error("Search Error:", error);
@@ -609,6 +609,14 @@ app.post("/admin/getTravelNotes", async (req, res) => {
     // 执行聚合查询
     const result = await TravelNote.aggregate(pipeline);
 
+    // 处理结果，为每个游记添加username字段
+    const processedResult = result.map((item) => {
+      return {
+        ...item,
+        username: item.userInfo ? item.userInfo.username : "",
+      };
+    });
+
     // 单独查询满足条件的文档总数，用于分页逻辑
     // 注意：这里需要重用匹配条件
     const total = await TravelNote.aggregate([
@@ -640,7 +648,7 @@ app.post("/admin/getTravelNotes", async (req, res) => {
     const totalCount = total.length ? total[0].total : 0;
 
     res.send({
-      result,
+      result: processedResult,
       total: totalCount,
     });
   } catch (error) {
